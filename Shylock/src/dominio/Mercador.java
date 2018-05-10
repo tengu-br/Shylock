@@ -88,11 +88,12 @@ public class Mercador extends Agent {
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
                 // CFP Message received. Process it
-                String title = msg.getContent();
+                String title = msg.getContent().substring(2);
+                String regiaoB = msg.getContent().substring(0,2);
                 ACLMessage reply = msg.createReply();
 
                 Integer price = (Integer) catalogo.get(title);
-                if (price != null) {
+                if ((price != null) && (regiaoB.equals(regiao))) {
                     // The requested book is available for sale. Reply with the price
                     reply.setPerformative(ACLMessage.PROPOSE);
                     reply.setContent(String.valueOf(price.intValue()));
@@ -115,11 +116,12 @@ public class Mercador extends Agent {
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
                 // ACCEPT_PROPOSAL Message received. Process it
-                String title = msg.getContent();
+                String title = msg.getContent().substring(2);
+                String regiaoB = msg.getContent().substring(0,2);
                 ACLMessage reply = msg.createReply();
 
                 Integer price = (Integer) catalogo.remove(title);
-                if (price != null) {
+                if ((price != null) && (regiaoB.equals(regiao))) {
                     reply.setPerformative(ACLMessage.INFORM);
                     System.out.println(title + " sold to agent " + msg.getSender().getName());
                 } else {

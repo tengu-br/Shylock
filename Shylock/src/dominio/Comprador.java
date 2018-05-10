@@ -26,7 +26,7 @@ public class Comprador extends Agent {
         System.out.println("Can I pay in Bitcoin? - " + getAID().getName() + " .");
         if (args != null && args.length > 0) {
             targetRegiao = (String) args[0];
-            addBehaviour(new TickerBehaviour(this, 60000) {
+            addBehaviour(new TickerBehaviour(this, 6000) {
                 protected void onTick() {
                     System.out.println("Trying to buy from " + targetRegiao);
                     // Update the list of seller agents
@@ -77,12 +77,12 @@ public class Comprador extends Agent {
                     for (int i = 0; i < mercadores.length; ++i) {
                         cfp.addReceiver(mercadores[i]);
                     }
-                    cfp.setContent(targetRegiao);
-                    cfp.setConversationId("book-trade");
+                    cfp.setContent(targetRegiao+"boi");
+                    cfp.setConversationId("busca-regiao");
                     cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
                     myAgent.send(cfp);
                     // Prepare the template to get proposals
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("book-trade"),
+                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
                             MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
                     step = 1;
                     break;
@@ -113,12 +113,12 @@ public class Comprador extends Agent {
                     // Send the purchase order to the seller that provided the best offer
                     ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
                     order.addReceiver(bestSeller);
-                    order.setContent(targetRegiao);
-                    order.setConversationId("book-trade");
+                    order.setContent(targetRegiao+"boi");
+                    order.setConversationId("busca-regiao");
                     order.setReplyWith("order" + System.currentTimeMillis());
                     myAgent.send(order);
                     // Prepare the template to get the purchase order reply
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("book-trade"),
+                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
                             MessageTemplate.MatchInReplyTo(order.getReplyWith()));
                     step = 3;
                     break;
@@ -129,7 +129,7 @@ public class Comprador extends Agent {
                         // Purchase order reply received
                         if (reply.getPerformative() == ACLMessage.INFORM) {
                             // Purchase successful. We can terminate
-                            System.out.println(targetRegiao + " successfully purchased from agent " + reply.getSender().getName());
+                            System.out.println("Encontrei o vendedor" + reply.getSender().getName() + " na regiao" + targetRegiao + " .");
                             System.out.println("Price = " + bestPrice);
                             myAgent.doDelete();
                         } else {
