@@ -24,10 +24,25 @@ public class Mercador extends Agent {
 
     private String regiao;
     private Hashtable catalogo;
+    private Hashtable cidades;
+    private Hashtable afinidade;
     private Integer money = 0;
+    private String personalidade;
 
     protected void setup() {
         catalogo = new Hashtable();
+        cidades = new Hashtable();
+        afinidade = new Hashtable();
+        cidades.put("NN", 0);
+        cidades.put("ND", 0);
+        cidades.put("CO", 0);
+        cidades.put("SD", 0);
+        cidades.put("SS", 0);
+        afinidade.put("NN", ThreadLocalRandom.current().nextInt(-1, 2));
+        afinidade.put("ND", ThreadLocalRandom.current().nextInt(-1, 2));
+        afinidade.put("CO", ThreadLocalRandom.current().nextInt(-1, 2));
+        afinidade.put("SD", ThreadLocalRandom.current().nextInt(-1, 2));
+        afinidade.put("SS", ThreadLocalRandom.current().nextInt(-1, 2));
 
         addBehaviour(new TickerBehaviour(this, 6000) {
             protected void onTick() {
@@ -53,29 +68,82 @@ public class Mercador extends Agent {
 
             }
         });
-        
+
         addBehaviour(new TickerBehaviour(this, 30000) {
             protected void onTick() {
-                switch (ThreadLocalRandom.current().nextInt(0, 5)) {
+                int result = 5;
+
+                cidades.put("SS", (Integer) cidades.get("SS") + 1);
+                cidades.put("SD", (Integer) cidades.get("SD") + 1);
+                cidades.put("CO", (Integer) cidades.get("CO") + 1);
+                cidades.put("ND", (Integer) cidades.get("ND") + 1);
+                cidades.put("NN", (Integer) cidades.get("NN") + 1);
+                if (personalidade.equals("cinico")) {
+
+                    int biggest = (Integer) cidades.get("SS");
+                    result = 0;
+                    if ((Integer) cidades.get("SD") > biggest) {
+                        biggest = (Integer) cidades.get("SD");
+                        result = 1;
+                    }
+                    if ((Integer) cidades.get("CO") > biggest) {
+                        biggest = (Integer) cidades.get("CO");
+                        result = 2;
+                    }
+                    if ((Integer) cidades.get("ND") > biggest) {
+                        biggest = (Integer) cidades.get("ND");
+                        result = 3;
+                    }
+                    if ((Integer) cidades.get("NN") > biggest) {
+                        biggest = (Integer) cidades.get("NN");
+                        result = 4;
+                    }
+                } else {
+                    int biggest = (((Integer) cidades.get("SS")) + (Integer) afinidade.get("SS"));
+                    result = 0;
+                    if (((Integer) cidades.get("SD") + (Integer) afinidade.get("SD")) > biggest) {
+                        biggest = (Integer) cidades.get("SD");
+                        result = 1;
+                    }
+                    if (((Integer) cidades.get("CO") + (Integer) afinidade.get("CO")) > biggest) {
+                        biggest = (Integer) cidades.get("CO");
+                        result = 2;
+                    }
+                    if (((Integer) cidades.get("ND") + (Integer) afinidade.get("ND")) > biggest) {
+                        biggest = (Integer) cidades.get("ND");
+                        result = 3;
+                    }
+                    if (((Integer) cidades.get("NN") + (Integer) afinidade.get("NN")) > biggest) {
+                        biggest = (Integer) cidades.get("NN");
+                        result = 4;
+                    }
+                }
+                System.out.println(result);
+                switch (result) {
                     case 0:
                         regiao = "SS";
-                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Sul (ss)");
+                        cidades.put("SS", 0);
+                        System.out.println("Vendedor " + myAgent.getLocalName() + " se mudou para a regiao Sul (ss)");
                         break;
                     case 1:
                         regiao = "SD";
-                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Sudeste (sd)");
+                        cidades.put("SD", 0);
+                        System.out.println("Vendedor " + myAgent.getLocalName() + " se mudou para a regiao Sudeste (sd)");
                         break;
                     case 2:
                         regiao = "CO";
-                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Centro-Oeste (co)");
+                        cidades.put("CO", 0);
+                        System.out.println("Vendedor " + myAgent.getLocalName() + " se mudou para a regiao Centro-Oeste (co)");
                         break;
                     case 3:
                         regiao = "ND";
-                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Nordeste (nd)");
+                        cidades.put("ND", 0);
+                        System.out.println("Vendedor " + myAgent.getLocalName() + " se mudou para a regiao Nordeste (nd)");
                         break;
                     case 4:
                         regiao = "NN";
-                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Norte (nn)");
+                        cidades.put("NN", 0);
+                        System.out.println("Vendedor " + myAgent.getLocalName() + " se mudou para a regiao Norte (nn)");
                         break;
                     default:
                         break;
@@ -87,11 +155,10 @@ public class Mercador extends Agent {
         Object[] args = getArguments();
         System.out.println("You speak an infinite deal of nothing. - " + getAID().getName() + " .");
         if (args != null && args.length > 0) {
-            regiao = (String) args[0];
-            System.out.println("I will go to  " + regiao + " .");
-
+            personalidade = (String) args[0];
         } else {
-            System.out.println("I won't go anywhere!");
+            System.out.println("Nao sei minha personalidade!");
+            takeDown();
         }
 
         DFAgentDescription dfd = new DFAgentDescription();
@@ -136,7 +203,6 @@ public class Mercador extends Agent {
 //            addProduto();
 //        }
 //    }
-
     private class OfferRequestsServer extends CyclicBehaviour {
 
         public void action() {
@@ -191,5 +257,5 @@ public class Mercador extends Agent {
                 block();
             }
         }
-    }    
+    }
 }
