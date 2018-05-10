@@ -10,7 +10,9 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.swing.GroupLayout;
 import javax.swing.JOptionPane;
 
@@ -22,10 +24,35 @@ public class Mercador extends Agent {
 
     private String regiao;
     private Hashtable catalogo;
+    private Integer money = 0;
 
     protected void setup() {
         catalogo = new Hashtable();
-        addProduto();
+
+        addBehaviour(new TickerBehaviour(this, 6000) {
+            protected void onTick() {
+                switch (ThreadLocalRandom.current().nextInt(0, 5)) {
+                    case 0:
+                        updateCatalogue("comida", ThreadLocalRandom.current().nextInt(1, 3));
+                        break;
+                    case 1:
+                        updateCatalogue("roupa", ThreadLocalRandom.current().nextInt(2, 5));
+                        break;
+                    case 2:
+                        updateCatalogue("entreterimento", ThreadLocalRandom.current().nextInt(1, 6));
+                        break;
+                    case 3:
+                        updateCatalogue("eletronicos", ThreadLocalRandom.current().nextInt(5, 7));
+                        break;
+                    case 4:
+                        updateCatalogue("decoracao", ThreadLocalRandom.current().nextInt(1, 4));
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        });
 
         Object[] args = getArguments();
         System.out.println("You speak an infinite deal of nothing. - " + getAID().getName() + " .");
@@ -36,7 +63,7 @@ public class Mercador extends Agent {
         } else {
             System.out.println("I won't go anywhere!");
         }
-        
+
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
@@ -51,7 +78,6 @@ public class Mercador extends Agent {
 
         addBehaviour(new OfferRequestsServer());
         addBehaviour(new PurchaseOrdersServer());
-
 
     }
 
@@ -72,14 +98,14 @@ public class Mercador extends Agent {
         });
     }
 
-    private void addProduto() {
-        String produto = JOptionPane.showInputDialog("Nome do produto: ");
-        Integer preco = Integer.parseInt(JOptionPane.showInputDialog("Preço do produto: "));
-        this.updateCatalogue(produto, preco);
-        if (JOptionPane.showConfirmDialog(null, "Adicionar outro produto?") == JOptionPane.YES_OPTION) {
-            addProduto();
-        }
-    }
+//    private void addProduto() {
+//        String produto = JOptionPane.showInputDialog("Nome do produto: ");
+//        Integer preco = Integer.parseInt(JOptionPane.showInputDialog("Preço do produto: "));
+//        this.updateCatalogue(produto, preco);
+//        if (JOptionPane.showConfirmDialog(null, "Adicionar outro produto?") == JOptionPane.YES_OPTION) {
+//            addProduto();
+//        }
+//    }
 
     private class OfferRequestsServer extends CyclicBehaviour {
 
@@ -89,7 +115,7 @@ public class Mercador extends Agent {
             if (msg != null) {
                 // CFP Message received. Process it
                 String title = msg.getContent().substring(2);
-                String regiaoB = msg.getContent().substring(0,2);
+                String regiaoB = msg.getContent().substring(0, 2);
                 ACLMessage reply = msg.createReply();
 
                 Integer price = (Integer) catalogo.get(title);
@@ -117,11 +143,12 @@ public class Mercador extends Agent {
             if (msg != null) {
                 // ACCEPT_PROPOSAL Message received. Process it
                 String title = msg.getContent().substring(2);
-                String regiaoB = msg.getContent().substring(0,2);
+                String regiaoB = msg.getContent().substring(0, 2);
                 ACLMessage reply = msg.createReply();
 
                 Integer price = (Integer) catalogo.remove(title);
                 if ((price != null) && (regiaoB.equals(regiao))) {
+                    money += price;
                     reply.setPerformative(ACLMessage.INFORM);
                     System.out.println(title + " sold to agent " + msg.getSender().getName());
                 } else {
@@ -134,5 +161,5 @@ public class Mercador extends Agent {
                 block();
             }
         }
-    }
+    }    
 }

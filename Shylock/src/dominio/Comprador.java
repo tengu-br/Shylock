@@ -10,6 +10,8 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  *
@@ -19,7 +21,7 @@ public class Comprador extends Agent {
 
     private String targetRegiao;
     private AID[] mercadores;
-    private String money;
+    private static final ArrayList<String> wishlist = new ArrayList<>();
 
     protected void setup() {
         Object[] args = getArguments();
@@ -28,7 +30,7 @@ public class Comprador extends Agent {
             targetRegiao = (String) args[0];
             addBehaviour(new TickerBehaviour(this, 6000) {
                 protected void onTick() {
-                    System.out.println("Trying to buy from " + targetRegiao);
+                    System.out.println("Tentando comprar os itens desejados em " + targetRegiao);
                     // Update the list of seller agents
                     DFAgentDescription template = new DFAgentDescription();
                     ServiceDescription sd = new ServiceDescription();
@@ -36,7 +38,7 @@ public class Comprador extends Agent {
                     template.addServices(sd);
                     try {
                         DFAgentDescription[] result = DFService.search(myAgent, template);
-                        System.out.println("Found the following seller agents:");
+//                        System.out.println("Foram encontrados os seguintes vendedores:");
                         mercadores = new AID[result.length];
                         for (int i = 0; i < result.length; ++i) {
                             mercadores[i] = result[i].getName();
@@ -48,6 +50,30 @@ public class Comprador extends Agent {
 
                     // Perform the request
                     myAgent.addBehaviour(new RequestPerformer());
+                }
+            });
+            
+            addBehaviour(new TickerBehaviour(this, 6000) {
+                protected void onTick() {
+                    switch (ThreadLocalRandom.current().nextInt(0, 5)) {
+                    case 0:
+                        wishlist.add("comida");
+                        break;
+                    case 1:
+                        wishlist.add("roupa");
+                        break;
+                    case 2:
+                        wishlist.add("entreterimento");
+                        break;
+                    case 3:
+                        wishlist.add("eletronicos");
+                        break;
+                    case 4:
+                        wishlist.add("decoracao");
+                        break;
+                    default:
+                        break;
+                }
                 }
             });
         } else {
@@ -62,7 +88,7 @@ public class Comprador extends Agent {
     }
 
     private class RequestPerformer extends Behaviour {
-
+        
         private AID bestSeller; // The agent who provides the best offer 
         private int bestPrice;  // The best offered price
         private int repliesCnt = 0; // The counter of replies from seller agents
@@ -77,7 +103,7 @@ public class Comprador extends Agent {
                     for (int i = 0; i < mercadores.length; ++i) {
                         cfp.addReceiver(mercadores[i]);
                     }
-                    cfp.setContent(targetRegiao+"boi");
+                    cfp.setContent(targetRegiao + "comida");
                     cfp.setConversationId("busca-regiao");
                     cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
                     myAgent.send(cfp);
@@ -113,7 +139,7 @@ public class Comprador extends Agent {
                     // Send the purchase order to the seller that provided the best offer
                     ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
                     order.addReceiver(bestSeller);
-                    order.setContent(targetRegiao+"boi");
+                    order.setContent(targetRegiao + "comida");
                     order.setConversationId("busca-regiao");
                     order.setReplyWith("order" + System.currentTimeMillis());
                     myAgent.send(order);
@@ -131,7 +157,7 @@ public class Comprador extends Agent {
                             // Purchase successful. We can terminate
                             System.out.println("Encontrei o vendedor" + reply.getSender().getName() + " na regiao" + targetRegiao + " .");
                             System.out.println("Price = " + bestPrice);
-                            myAgent.doDelete();
+//                            myAgent.doDelete();
                         } else {
                             System.out.println("Ah n.");
                         }
