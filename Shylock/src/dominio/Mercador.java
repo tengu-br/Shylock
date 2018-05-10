@@ -53,6 +53,36 @@ public class Mercador extends Agent {
 
             }
         });
+        
+        addBehaviour(new TickerBehaviour(this, 30000) {
+            protected void onTick() {
+                switch (ThreadLocalRandom.current().nextInt(0, 5)) {
+                    case 0:
+                        regiao = "SS";
+                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Sul (ss)");
+                        break;
+                    case 1:
+                        regiao = "SD";
+                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Sudeste (sd)");
+                        break;
+                    case 2:
+                        regiao = "CO";
+                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Centro-Oeste (co)");
+                        break;
+                    case 3:
+                        regiao = "ND";
+                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Nordeste (nd)");
+                        break;
+                    case 4:
+                        regiao = "NN";
+                        System.out.println("Vendedor "+myAgent.getLocalName()+ " se mudou para a regiao Norte (nn)");
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        });
 
         Object[] args = getArguments();
         System.out.println("You speak an infinite deal of nothing. - " + getAID().getName() + " .");
@@ -150,7 +180,7 @@ public class Mercador extends Agent {
                 if ((price != null) && (regiaoB.equals(regiao))) {
                     money += price;
                     reply.setPerformative(ACLMessage.INFORM);
-                    System.out.println(title + " sold to agent " + msg.getSender().getName());
+                    System.out.println(title + " vendido(s) para " + msg.getSender().getLocalName());
                 } else {
                     // The requested book has been sold to another buyer in the meanwhile .
                     reply.setPerformative(ACLMessage.FAILURE);

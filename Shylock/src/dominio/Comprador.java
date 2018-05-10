@@ -25,12 +25,12 @@ public class Comprador extends Agent {
 
     protected void setup() {
         Object[] args = getArguments();
-        System.out.println("Can I pay in Bitcoin? - " + getAID().getName() + " .");
+        System.out.println("Posso pagar em bitcoin? - " + getAID().getName() + " .");
         if (args != null && args.length > 0) {
             targetRegiao = (String) args[0];
             addBehaviour(new TickerBehaviour(this, 6000) {
                 protected void onTick() {
-                    System.out.println("Tentando comprar os itens desejados em " + targetRegiao);
+//                    System.out.println("Tentando comprar os itens desejados em " + targetRegiao);
                     // Update the list of seller agents
                     DFAgentDescription template = new DFAgentDescription();
                     ServiceDescription sd = new ServiceDescription();
@@ -42,38 +42,42 @@ public class Comprador extends Agent {
                         mercadores = new AID[result.length];
                         for (int i = 0; i < result.length; ++i) {
                             mercadores[i] = result[i].getName();
-                            System.out.println(mercadores[i].getName());
+//                            System.out.println(mercadores[i].getName());
                         }
                     } catch (FIPAException fe) {
                         fe.printStackTrace();
                     }
 
                     // Perform the request
-                    myAgent.addBehaviour(new RequestPerformer());
+                    myAgent.addBehaviour(new buyComida());
+                    myAgent.addBehaviour(new buyEletronicos());
+                    myAgent.addBehaviour(new buyRoupa());
+                    myAgent.addBehaviour(new buyEntreterimento());
+                    myAgent.addBehaviour(new buyDecoracao());
                 }
             });
-            
+
             addBehaviour(new TickerBehaviour(this, 6000) {
                 protected void onTick() {
                     switch (ThreadLocalRandom.current().nextInt(0, 5)) {
-                    case 0:
-                        wishlist.add("comida");
-                        break;
-                    case 1:
-                        wishlist.add("roupa");
-                        break;
-                    case 2:
-                        wishlist.add("entreterimento");
-                        break;
-                    case 3:
-                        wishlist.add("eletronicos");
-                        break;
-                    case 4:
-                        wishlist.add("decoracao");
-                        break;
-                    default:
-                        break;
-                }
+                        case 0:
+                            wishlist.add("comida");
+                            break;
+                        case 1:
+                            wishlist.add("roupa");
+                            break;
+                        case 2:
+                            wishlist.add("entreterimento");
+                            break;
+                        case 3:
+                            wishlist.add("eletronicos");
+                            break;
+                        case 4:
+                            wishlist.add("decoracao");
+                            break;
+                        default:
+                            break;
+                    }
                 }
             });
         } else {
@@ -87,8 +91,8 @@ public class Comprador extends Agent {
         System.out.println("I lost my wallet password! - " + getAID().getName() + " .");
     }
 
-    private class RequestPerformer extends Behaviour {
-        
+    private class buyComida extends Behaviour {
+
         private AID bestSeller; // The agent who provides the best offer 
         private int bestPrice;  // The best offered price
         private int repliesCnt = 0; // The counter of replies from seller agents
@@ -96,83 +100,462 @@ public class Comprador extends Agent {
         private int step = 0;
 
         public void action() {
-            switch (step) {
-                case 0:
-                    // Send the cfp to all sellers
-                    ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-                    for (int i = 0; i < mercadores.length; ++i) {
-                        cfp.addReceiver(mercadores[i]);
-                    }
-                    cfp.setContent(targetRegiao + "comida");
-                    cfp.setConversationId("busca-regiao");
-                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
-                    myAgent.send(cfp);
-                    // Prepare the template to get proposals
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
-                            MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-                    step = 1;
-                    break;
-                case 1:
-                    // Receive all proposals/refusals from seller agents
-                    ACLMessage reply = myAgent.receive(mt);
-                    if (reply != null) {
-                        // Reply received
-                        if (reply.getPerformative() == ACLMessage.PROPOSE) {
-                            // This is an offer 
-                            int price = Integer.parseInt(reply.getContent());
-                            if (bestSeller == null || price < bestPrice) {
-                                // This is the best offer at present
-                                bestPrice = price;
-                                bestSeller = reply.getSender();
+            if (wishlist.contains("comida")) {
+                switch (step) {
+                    case 0:
+                        // Send the cfp to all sellers
+                        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                        for (int i = 0; i < mercadores.length; ++i) {
+                            cfp.addReceiver(mercadores[i]);
+                        }
+                        cfp.setContent(targetRegiao + "comida");
+                        cfp.setConversationId("busca-regiao");
+                        cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                        myAgent.send(cfp);
+                        // Prepare the template to get proposals
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+                        step = 1;
+                        break;
+                    case 1:
+                        // Receive all proposals/refusals from seller agents
+                        ACLMessage reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Reply received
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                // This is an offer 
+                                int price = Integer.parseInt(reply.getContent());
+                                if (bestSeller == null || price < bestPrice) {
+                                    // This is the best offer at present
+                                    bestPrice = price;
+                                    bestSeller = reply.getSender();
+                                }
                             }
-                        }
-                        repliesCnt++;
-                        if (repliesCnt >= mercadores.length) {
-                            // We received all replies
-                            step = 2;
-                        }
-                    } else {
-                        block();
-                    }
-                    break;
-                case 2:
-                    // Send the purchase order to the seller that provided the best offer
-                    ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-                    order.addReceiver(bestSeller);
-                    order.setContent(targetRegiao + "comida");
-                    order.setConversationId("busca-regiao");
-                    order.setReplyWith("order" + System.currentTimeMillis());
-                    myAgent.send(order);
-                    // Prepare the template to get the purchase order reply
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
-                            MessageTemplate.MatchInReplyTo(order.getReplyWith()));
-                    step = 3;
-                    break;
-                case 3:
-                    // Receive the purchase order reply
-                    reply = myAgent.receive(mt);
-                    if (reply != null) {
-                        // Purchase order reply received
-                        if (reply.getPerformative() == ACLMessage.INFORM) {
-                            // Purchase successful. We can terminate
-                            System.out.println("Encontrei o vendedor" + reply.getSender().getName() + " na regiao" + targetRegiao + " .");
-                            System.out.println("Price = " + bestPrice);
-//                            myAgent.doDelete();
+                            repliesCnt++;
+                            if (repliesCnt >= mercadores.length) {
+                                // We received all replies
+                                step = 2;
+                            }
                         } else {
-                            System.out.println("Ah n.");
+                            block();
                         }
+                        break;
+                    case 2:
+                        // Send the purchase order to the seller that provided the best offer
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestSeller);
+                        order.setContent(targetRegiao + "comida");
+                        order.setConversationId("busca-regiao");
+                        order.setReplyWith("order" + System.currentTimeMillis());
+                        myAgent.send(order);
+                        // Prepare the template to get the purchase order reply
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply
+                        reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Purchase order reply received
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
+                                // Purchase successful. We can terminate
+                                System.out.println("Encontrei o vendedor" + reply.getSender().getLocalName()+ " na regiao" + targetRegiao + " .");
+                                System.out.println("Price = " + bestPrice);
+//                            myAgent.doDelete();
+                                wishlist.remove("comida");
+                            } else {
+//                                System.out.println("Ah n.");
+                            }
 
-                        step = 4;
-                    } else {
-                        block();
-                    }
-                    break;
+                            step = 4;
+                        } else {
+                            block();
+                        }
+                        break;
+                }
             }
         }
 
         public boolean done() {
             if (step == 2 && bestSeller == null) {
-                System.out.println("Compra falhou: sem mercadores na regiao " + targetRegiao + " .");
+//                System.out.println("Compra falhou: sem mercadores na regiao " + targetRegiao + " .");
+            }
+            return ((step == 2 && bestSeller == null) || step == 4);
+        }
+    }
+
+    private class buyEletronicos extends Behaviour {
+
+        private AID bestSeller; // The agent who provides the best offer 
+        private int bestPrice;  // The best offered price
+        private int repliesCnt = 0; // The counter of replies from seller agents
+        private MessageTemplate mt; // The template to receive replies
+        private int step = 0;
+
+        public void action() {
+            if (wishlist.contains("eletronicos")) {
+                switch (step) {
+                    case 0:
+                        // Send the cfp to all sellers
+                        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                        for (int i = 0; i < mercadores.length; ++i) {
+                            cfp.addReceiver(mercadores[i]);
+                        }
+                        cfp.setContent(targetRegiao + "eletronicos");
+                        cfp.setConversationId("busca-regiao");
+                        cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                        myAgent.send(cfp);
+                        // Prepare the template to get proposals
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+                        step = 1;
+                        break;
+                    case 1:
+                        // Receive all proposals/refusals from seller agents
+                        ACLMessage reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Reply received
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                // This is an offer 
+                                int price = Integer.parseInt(reply.getContent());
+                                if (bestSeller == null || price < bestPrice) {
+                                    // This is the best offer at present
+                                    bestPrice = price;
+                                    bestSeller = reply.getSender();
+                                }
+                            }
+                            repliesCnt++;
+                            if (repliesCnt >= mercadores.length) {
+                                // We received all replies
+                                step = 2;
+                            }
+                        } else {
+                            block();
+                        }
+                        break;
+                    case 2:
+                        // Send the purchase order to the seller that provided the best offer
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestSeller);
+                        order.setContent(targetRegiao + "eletronicos");
+                        order.setConversationId("busca-regiao");
+                        order.setReplyWith("order" + System.currentTimeMillis());
+                        myAgent.send(order);
+                        // Prepare the template to get the purchase order reply
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply
+                        reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Purchase order reply received
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
+                                // Purchase successful. We can terminate
+                                System.out.println("Encontrei o vendedor" + reply.getSender().getLocalName() + " na regiao" + targetRegiao + " .");
+                                System.out.println("Preco pago = " + bestPrice);
+//                            myAgent.doDelete();
+                                wishlist.remove("eletronicos");
+                            } else {
+//                                System.out.println("Ah n.");
+                            }
+
+                            step = 4;
+                        } else {
+                            block();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public boolean done() {
+            if (step == 2 && bestSeller == null) {
+//                System.out.println("Compra falhou: sem mercadores vendendo este item na regiao " + targetRegiao + " .");
+            }
+            return ((step == 2 && bestSeller == null) || step == 4);
+        }
+    }
+
+    private class buyRoupa extends Behaviour {
+
+        private AID bestSeller; // The agent who provides the best offer 
+        private int bestPrice;  // The best offered price
+        private int repliesCnt = 0; // The counter of replies from seller agents
+        private MessageTemplate mt; // The template to receive replies
+        private int step = 0;
+
+        public void action() {
+            if (wishlist.contains("roupa")) {
+                switch (step) {
+                    case 0:
+                        // Send the cfp to all sellers
+                        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                        for (int i = 0; i < mercadores.length; ++i) {
+                            cfp.addReceiver(mercadores[i]);
+                        }
+                        cfp.setContent(targetRegiao + "roupa");
+                        cfp.setConversationId("busca-regiao");
+                        cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                        myAgent.send(cfp);
+                        // Prepare the template to get proposals
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+                        step = 1;
+                        break;
+                    case 1:
+                        // Receive all proposals/refusals from seller agents
+                        ACLMessage reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Reply received
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                // This is an offer 
+                                int price = Integer.parseInt(reply.getContent());
+                                if (bestSeller == null || price < bestPrice) {
+                                    // This is the best offer at present
+                                    bestPrice = price;
+                                    bestSeller = reply.getSender();
+                                }
+                            }
+                            repliesCnt++;
+                            if (repliesCnt >= mercadores.length) {
+                                // We received all replies
+                                step = 2;
+                            }
+                        } else {
+                            block();
+                        }
+                        break;
+                    case 2:
+                        // Send the purchase order to the seller that provided the best offer
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestSeller);
+                        order.setContent(targetRegiao + "roupa");
+                        order.setConversationId("busca-regiao");
+                        order.setReplyWith("order" + System.currentTimeMillis());
+                        myAgent.send(order);
+                        // Prepare the template to get the purchase order reply
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply
+                        reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Purchase order reply received
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
+                                // Purchase successful. We can terminate
+                                System.out.println("Encontrei o vendedor" + reply.getSender().getLocalName() + " na regiao" + targetRegiao + " .");
+                                System.out.println("Preco pago = " + bestPrice);
+//                            myAgent.doDelete();
+                                wishlist.remove("roupa");
+                            } else {
+//                                System.out.println("Ah n.");
+                            }
+
+                            step = 4;
+                        } else {
+                            block();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public boolean done() {
+            if (step == 2 && bestSeller == null) {
+//                System.out.println("Compra falhou: sem mercadores vendendo este item na regiao " + targetRegiao + " .");
+            }
+            return ((step == 2 && bestSeller == null) || step == 4);
+        }
+    }
+
+    private class buyEntreterimento extends Behaviour {
+
+        private AID bestSeller; // The agent who provides the best offer 
+        private int bestPrice;  // The best offered price
+        private int repliesCnt = 0; // The counter of replies from seller agents
+        private MessageTemplate mt; // The template to receive replies
+        private int step = 0;
+
+        public void action() {
+            if (wishlist.contains("entreterimento")) {
+                switch (step) {
+                    case 0:
+                        // Send the cfp to all sellers
+                        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                        for (int i = 0; i < mercadores.length; ++i) {
+                            cfp.addReceiver(mercadores[i]);
+                        }
+                        cfp.setContent(targetRegiao + "entreterimento");
+                        cfp.setConversationId("busca-regiao");
+                        cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                        myAgent.send(cfp);
+                        // Prepare the template to get proposals
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+                        step = 1;
+                        break;
+                    case 1:
+                        // Receive all proposals/refusals from seller agents
+                        ACLMessage reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Reply received
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                // This is an offer 
+                                int price = Integer.parseInt(reply.getContent());
+                                if (bestSeller == null || price < bestPrice) {
+                                    // This is the best offer at present
+                                    bestPrice = price;
+                                    bestSeller = reply.getSender();
+                                }
+                            }
+                            repliesCnt++;
+                            if (repliesCnt >= mercadores.length) {
+                                // We received all replies
+                                step = 2;
+                            }
+                        } else {
+                            block();
+                        }
+                        break;
+                    case 2:
+                        // Send the purchase order to the seller that provided the best offer
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestSeller);
+                        order.setContent(targetRegiao + "entreterimento");
+                        order.setConversationId("busca-regiao");
+                        order.setReplyWith("order" + System.currentTimeMillis());
+                        myAgent.send(order);
+                        // Prepare the template to get the purchase order reply
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply
+                        reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Purchase order reply received
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
+                                // Purchase successful. We can terminate
+                                System.out.println("Encontrei o vendedor" + reply.getSender().getLocalName() + " na regiao" + targetRegiao + " .");
+                                System.out.println("Preco pago = " + bestPrice);
+//                            myAgent.doDelete();
+                                wishlist.remove("entreterimento");
+                            } else {
+//                                System.out.println("Ah n.");
+                            }
+
+                            step = 4;
+                        } else {
+                            block();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public boolean done() {
+            if (step == 2 && bestSeller == null) {
+//                System.out.println("Compra falhou: sem mercadores vendendo este item na regiao " + targetRegiao + " .");
+            }
+            return ((step == 2 && bestSeller == null) || step == 4);
+        }
+    }
+
+    private class buyDecoracao extends Behaviour {
+
+        private AID bestSeller; // The agent who provides the best offer 
+        private int bestPrice;  // The best offered price
+        private int repliesCnt = 0; // The counter of replies from seller agents
+        private MessageTemplate mt; // The template to receive replies
+        private int step = 0;
+
+        public void action() {
+            if (wishlist.contains("decoracao")) {
+                switch (step) {
+                    case 0:
+                        // Send the cfp to all sellers
+                        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                        for (int i = 0; i < mercadores.length; ++i) {
+                            cfp.addReceiver(mercadores[i]);
+                        }
+                        cfp.setContent(targetRegiao + "decoracao");
+                        cfp.setConversationId("busca-regiao");
+                        cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
+                        myAgent.send(cfp);
+                        // Prepare the template to get proposals
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
+                        step = 1;
+                        break;
+                    case 1:
+                        // Receive all proposals/refusals from seller agents
+                        ACLMessage reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Reply received
+                            if (reply.getPerformative() == ACLMessage.PROPOSE) {
+                                // This is an offer 
+                                int price = Integer.parseInt(reply.getContent());
+                                if (bestSeller == null || price < bestPrice) {
+                                    // This is the best offer at present
+                                    bestPrice = price;
+                                    bestSeller = reply.getSender();
+                                }
+                            }
+                            repliesCnt++;
+                            if (repliesCnt >= mercadores.length) {
+                                // We received all replies
+                                step = 2;
+                            }
+                        } else {
+                            block();
+                        }
+                        break;
+                    case 2:
+                        // Send the purchase order to the seller that provided the best offer
+                        ACLMessage order = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                        order.addReceiver(bestSeller);
+                        order.setContent(targetRegiao + "decoracao");
+                        order.setConversationId("busca-regiao");
+                        order.setReplyWith("order" + System.currentTimeMillis());
+                        myAgent.send(order);
+                        // Prepare the template to get the purchase order reply
+                        mt = MessageTemplate.and(MessageTemplate.MatchConversationId("busca-regiao"),
+                                MessageTemplate.MatchInReplyTo(order.getReplyWith()));
+                        step = 3;
+                        break;
+                    case 3:
+                        // Receive the purchase order reply
+                        reply = myAgent.receive(mt);
+                        if (reply != null) {
+                            // Purchase order reply received
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
+                                // Purchase successful. We can terminate
+                                System.out.println("Encontrei o vendedor" + reply.getSender().getLocalName() + " na regiao" + targetRegiao + " .");
+                                System.out.println("Preco pago = " + bestPrice);
+//                            myAgent.doDelete();
+                                wishlist.remove("decoracao");
+                            } else {
+//                                System.out.println("Ah n.");
+                            }
+
+                            step = 4;
+                        } else {
+                            block();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public boolean done() {
+            if (step == 2 && bestSeller == null) {
+//                System.out.println("Compra falhou: sem mercadores vendendo este item na regiao " + targetRegiao + " .");
             }
             return ((step == 2 && bestSeller == null) || step == 4);
         }
